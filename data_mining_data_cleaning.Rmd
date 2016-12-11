@@ -11,7 +11,6 @@ library(data.table)
 library(RCurl)
 library(ROAuth)
 library(streamR)
-library(data.table)
 library(tidyr)
 library(ggplot2)
 library(grid)
@@ -19,10 +18,6 @@ library(ggmap)
 library(stringr)
 library(twitteR)
 library(tm)
-library(wordcloud)
-library(RColorBrewer)
-library(RPostgreSQL)
-library(chron)
 ```
 
 #creat new twitter app:"MA_615_Final_Assignment"
@@ -37,7 +32,7 @@ my_oauth$handshake(cainfo = system.file("CurlSSL", "cacert.pem", package = "RCur
 save(my_oauth, file = "my_oauth.Rdata")
 ```
 
-# crawling data from twitter at Friday night/Saturday night/Sunday night
+# crawling data from twitter at Friday night/Saturday night
 ```{r}
 load("my_oauth.Rdata")
 filename <- paste("tweetsSun",".json",sep = "")
@@ -80,77 +75,7 @@ Sundaytweets <- cleantweets(Sundaytweets)
 saveRDS(Saturdaytweets,"sattweets.RDS")
 saveRDS(Sundaytweets,"suntweets.RDS")
 
-Saturdaytweets <- readRDS("sattweets.RDS")
-Sundaytweets <- readRDS("suntweets.RDS")
-
 #compare time by tmp < times("5:00:00")
-```
-
-```{r}
-
-```
-
-
-
-#Where are they?
-```{r}
-tweetmap <- function(Saturday,tweets.df,starttime,endtime){
-  #standard input time: starttime="05:00:00"
-  starttime <- times(starttime)
-  endtime <- times(endtime)
-  map.data <- map_data("state") 
-  #tmp <- tweets.df
-  tweets.df[,intime:=(EAST_Time>=starttime & EAST_Time<=endtime)]
-  tmp <- tweets.df[intime==TRUE]
-  points <- data.frame(x=as.numeric(tmp$place_lon),
-                       y=as.numeric(tmp$place_lat))
-  points <- points[points$y<50,]
-  points$tag <- points$x< -100 & points$y<30
-  points <- points[points$tag==FALSE,]
-  p <- ggplot(map.data) + geom_polygon(aes(long,lat,group=group),color="darkgrey",fill="black") + 
-  geom_point(data = points,aes(x,y),size=1,alpha=.1,color="yellow") + coord_map( "polyconic" ) + 
-  expand_limits( x = map.data$long, y = map.data$lat ) +
-  theme(axis.line=element_blank(),
-        axis.text=element_blank(),
-        axis.ticks=element_blank(), 
-        axis.title=element_blank(),
-        plot.title = element_text(size=20,angle=0),
-        panel.background=element_blank(),
-        panel.border=element_blank(), 
-        panel.grid.major=element_blank(),
-        plot.background=element_blank(), 
-        plot.margin=unit(0*c(-1.5,-1.5,-1.5,-1.5),"lines")) + 
-  ggtitle(paste(Saturday,"Tweets between",starttime+times("00:10:00"),"and",endtime+times("00:10:00"),sep = " "))
-  return(p)
-}
-
-tweetmap("Saturday",tweets.df = tweets,starttime = "00:50:00",endtime = "01:50:00")
-tweetmap("Saturday",tweets.df = tweets,starttime = "01:50:00",endtime = "02:50:00")
-tweetmap("Saturday",tweets.df = tweets,starttime = "02:50:00",endtime = "03:50:00")
-
-locationtxt <- tweets$location
-locationtxt <- tolower(unlist(strsplit(locationtxt, " ")))
-lsample <- sample(locationtxt,10000,replace = FALSE)
-wordcloud(lsample, min.freq=3,colors = brewer.pal(7, "Pastel1"))
-```
-
-#who are they?
-```{r}
-ggplot(tweets) + geom_bar(aes(lang,fill=lang)) + theme(legend.position="none") + ggtitle("Tweets language")
-ggplot(tweets) + geom_histogram(aes(followers_count,fill=verified),bins = 1000) + xlim(0,10000) + ggtitle("Tweeter's follower") + facet_grid(~verified)
-
-```
-
-
-#word cloud
-```{r}
-tweetTexts<- tweets$text # to extract only the text of each status object
-words<-unlist(strsplit(tweetTexts, " "))
-words<-tolower(words)
-wsample <- sample(words,10000,replace = FALSE)
-#clean_words<-words[-grep("http|@|#|ü|ä|ö", words)] 
-wordcloud(wsample, min.freq=3,colors = brewer.pal(7, "Pastel1"))
-
 ```
 
 

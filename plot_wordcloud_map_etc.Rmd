@@ -8,6 +8,16 @@ runtime: shiny
 
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(echo = TRUE)
+library(data.table)
+library(tidyr)
+library(ggplot2)
+library(grid)
+library(ggmap)
+library(stringr)
+library(wordcloud)
+library(RColorBrewer)
+library(RPostgreSQL)
+library(chron)
 ```
 
 This R Markdown document is made interactive using Shiny. Unlike the more traditional workflow of creating static reports, you can now create documents that allow your readers to change the assumptions underlying your analysis and see the results immediately. 
@@ -54,6 +64,68 @@ Note the use of the `height` parameter to determine how much vertical space the 
 You can also use the `shinyApp` function to define an application inline rather then in an external directory.
 
 In all of R code chunks above the `echo = FALSE` attribute is used. This is to prevent the R code within the chunk from rendering in the document alongside the Shiny components.
+
+
+#Where are they?
+```{r}
+tweetmap <- function(Saturday,tweets.df,starttime,endtime){
+  #standard input time: starttime="05:00:00"
+  starttime <- times(starttime)
+  endtime <- times(endtime)
+  map.data <- map_data("state") 
+  #tmp <- tweets.df
+  tweets.df[,intime:=(EAST_Time>=starttime & EAST_Time<=endtime)]
+  tmp <- tweets.df[intime==TRUE]
+  points <- data.frame(x=as.numeric(tmp$place_lon),
+                       y=as.numeric(tmp$place_lat))
+  points <- points[points$y<50,]
+  points$tag <- points$x< -100 & points$y<30
+  points <- points[points$tag==FALSE,]
+  p <- ggplot(map.data) + geom_polygon(aes(long,lat,group=group),color="darkgrey",fill="black") + 
+  geom_point(data = points,aes(x,y),size=1,alpha=.1,color="yellow") + coord_map( "polyconic" ) + 
+  expand_limits( x = map.data$long, y = map.data$lat ) +
+  theme(axis.line=element_blank(),
+        axis.text=element_blank(),
+        axis.ticks=element_blank(), 
+        axis.title=element_blank(),
+        plot.title = element_text(size=20,angle=0),
+        panel.background=element_blank(),
+        panel.border=element_blank(), 
+        panel.grid.major=element_blank(),
+        plot.background=element_blank(), 
+        plot.margin=unit(0*c(-1.5,-1.5,-1.5,-1.5),"lines")) + 
+  ggtitle(paste(Saturday,"Tweets between",starttime+times("00:10:00"),"and",endtime+times("00:10:00"),sep = " "))
+  return(p)
+}
+
+tweetmap("Saturday",tweets.df = tweets,starttime = "00:50:00",endtime = "01:50:00")
+tweetmap("Saturday",tweets.df = tweets,starttime = "01:50:00",endtime = "02:50:00")
+tweetmap("Saturday",tweets.df = tweets,starttime = "02:50:00",endtime = "03:50:00")
+
+locationtxt <- tweets$location
+locationtxt <- tolower(unlist(strsplit(locationtxt, " ")))
+lsample <- sample(locationtxt,10000,replace = FALSE)
+wordcloud(lsample, min.freq=3,colors = brewer.pal(7, "Pastel1"))
+```
+
+#who are they?
+```{r}
+ggplot(tweets) + geom_bar(aes(lang,fill=lang)) + theme(legend.position="none") + ggtitle("Tweets language")
+ggplot(tweets) + geom_histogram(aes(followers_count,fill=verified),bins = 1000) + xlim(0,10000) + ggtitle("Tweeter's follower") + facet_grid(~verified)
+
+```
+
+
+#word cloud
+```{r}
+tweetTexts<- tweets$text # to extract only the text of each status object
+words<-unlist(strsplit(tweetTexts, " "))
+words<-tolower(words)
+wsample <- sample(words,10000,replace = FALSE)
+#clean_words<-words[-grep("http|@|#|ü|ä|ö", words)] 
+wordcloud(wsample, min.freq=3,colors = brewer.pal(7, "Pastel1"))
+
+```
 
 
 
