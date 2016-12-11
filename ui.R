@@ -11,7 +11,7 @@ library(shiny)
 shinyUI(
   fluidPage(
     theme="bootstrap.css",
-    titlePanel("Who, What and Where on Twitter at weekend's Midnight",windowTitle = "Twitter Shiny"),
+    titlePanel(title=div(img(src="logo.png",height=80,width=180),"Who, What and Where on Twitter at weekend's Midnight")),
     navbarPage(title="Contents",
                
                tabPanel("Introduction & Data preparation",
@@ -26,8 +26,8 @@ shinyUI(
                hr(),
                p("Author: Lloyd Liu, Christian Sun"),
                splitLayout(
-                 img(src="4.pic.jpg"),
-                 img(src="3.pic.jpg"))
+                 img(src="4.pic.jpg",height=400,width=400),
+                 img(src="3.pic.jpg",height=400,width=400))
                
                ),
                

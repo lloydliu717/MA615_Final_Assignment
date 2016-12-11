@@ -19,6 +19,9 @@ cleantweets <- function(tweets.df){
 Saturdaytweets <- cleantweets(Saturdaytweets)
 Sundaytweets <- cleantweets(Sundaytweets)
 
+saveRDS(Saturdaytweets,"sattweets.RDS")
+saveRDS(Sundaytweets,"suntweets.RDS")
+
 selectdata_list <- c("Saturday","Sunday")
 selectfocus_list <- c("lang","followers_count")
 
