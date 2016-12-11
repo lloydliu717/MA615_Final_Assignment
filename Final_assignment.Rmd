@@ -54,7 +54,6 @@ saveRDS(tweets.df,RDSfile)
 
 #data cleaning
 ```{r}
-tweets.df <- readRDS("tweets.RDS")
 #drop useless column
 cleantweets <- function(tweets.df){
   tweets.df[,c("favorited","retweet_count",
@@ -72,11 +71,26 @@ cleantweets <- function(tweets.df){
   return(tweets.df)
 }
 
-tweets <- cleantweets(tweets.df = tweets.df)
+Saturdaytweets <- readRDS("tweets.RDS")
+Sundaytweets <- readRDS("tweetsSun.RDS")
 
+Saturdaytweets <- cleantweets(Saturdaytweets)
+Sundaytweets <- cleantweets(Sundaytweets)
+
+saveRDS(Saturdaytweets,"sattweets.RDS")
+saveRDS(Sundaytweets,"suntweets.RDS")
+
+Saturdaytweets <- readRDS("sattweets.RDS")
+Sundaytweets <- readRDS("suntweets.RDS")
 
 #compare time by tmp < times("5:00:00")
 ```
+
+```{r}
+
+```
+
+
 
 #Where are they?
 ```{r}
