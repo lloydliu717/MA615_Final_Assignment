@@ -49,16 +49,12 @@ filterStream(file.name = filename,
 tweets.df <- parseTweets(filename)
 tweets.df <- as.data.table(tweets.df)
 saveRDS(tweets.df,RDSfile)
-tweets.df <- readRDS("tweets.RDS")
-```
-
-#*store data into database and extract from database
-```{r}
 
 ```
 
 #data cleaning
 ```{r}
+tweets.df <- readRDS("tweets.RDS")
 #drop useless column
 cleantweets <- function(tweets.df){
   tweets.df[,c("favorited","retweet_count",
