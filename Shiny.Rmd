@@ -99,6 +99,7 @@ Column {.sidebar}
 
 ```{r}
 br()
+
 a(href="https://github.com/lloydliu717/MA615_Final_Assignment","View source code on Github")
 hr()
 h5("Author: Zichun Liu (Lloyd)")
@@ -120,6 +121,41 @@ br()
 h4("We want to know about twitter's behavior in midnight at weekend!")
 hr()
 img(src="bird.png",width=600,height=450)
+br()
+hr()
+h4("Brief Project Introduction:") 
+h5("1. Data Mining")
+p("To get the data, we use the package 'StreamR' and function 'filterStream'. We set the search time as 3 hours, and set the search location within the US")
+code("filterStream(file.name = filename,locations=c(-125,25,-66,50),timeout = 3600*3, oauth=my_oauth)")
+code("tweets.df <- parseTweets(filename)")
+code("tweets.df <- as.data.table(tweets.df)")
+code("saveRDS(tweets.df,RDSfile)")
+p("We repeat this process on Saturday and Sunday midnight to get two dataset for further analysis.")
+h5("2. Data Cleaning")
+p("To clean the data, we wrote a function called 'cleantweets'. With this cleantweets, we:")
+p("1) Drop the useless column;")
+p("2) Get rid of twitter expressions, emoji expressions and other encoding formats;")
+p("3) Get rid of url links;")
+p("4) split the date information to make it more clear;")
+p("5) Adjust time to US East time.")
+code("cleantweets <- function(tweets.df){")
+code('  tweets.df[,c("favorited","retweet_count","source","retweeted","in_reply_to_screen_name","geo_enabled","protected","user_url","place_name","place_id","expanded_url","url"):=NULL]')
+code('tweets.df$text <- iconv(tweets.df$text, from = "latin1", to = "ASCII", sub="")')
+code("tweets.df$text <- gsub('http\\S+\\s*', '', tweets.df$text)")
+code('tweets.df$location <- iconv(tweets.df$location, from = "latin1", to = "ASCII", sub="")')
+code('tweets.df$description <- iconv(tweets.df$description, from = "latin1", to = "ASCII", sub="")')
+code('tweets.df[,c("Weekday","Date1","Date2","time","timezone","year"):=tstrsplit(created_at, " ", fixed=TRUE)]')
+code('tweets.df[,Date1 := paste(Date1,Date2)]')
+code('tweets.df[,EAST_Time := times(time)-times("05:00:00")]')
+code('tweets.df[,c("Date2","timezone","time"):=NULL]')
+code('return(tweets.df)')
+code('}')
+p("We clean the data of Saturday and Sunday and save them into Rdata")
+h5("3. Plots, Maps and Word Cloud")
+p("Just enjoy those Visualization in the following tabs!")
+h5("4. To be continued!")
+p("Due to the time limit and work load limt, we are not able to go further, we plan to go further in text analysis more than word cloud. We want to go for WORD FREQUENCY, perform more analysis on based on SENTIMENT SCORE, LEAFLET MAP, etc.")
+br()
 br()
 ```
 
@@ -378,4 +414,8 @@ renderPlot({
 
 ```
 
+To be continued {data-navmenu="SENTIMENT"}
+===================================== 
 
+To be continued {data-navmenu="TO BE CONTINUED"}
+===================================== 
