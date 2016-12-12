@@ -1,74 +1,36 @@
 ---
 title: "Untitled"
 author: "Zichun Liu"
-date: "12/11/2016"
+date: "12/8/2016"
 output: html_document
-runtime: shiny
 ---
 
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(echo = TRUE)
 library(data.table)
+library(RCurl)
+library(ROAuth)
+library(streamR)
 library(tidyr)
 library(ggplot2)
 library(grid)
 library(ggmap)
 library(stringr)
-library(wordcloud)
-library(RColorBrewer)
-library(RPostgreSQL)
-library(chron)
+library(twitteR)
+library(tm)
+library(plyr)
 ```
 
-This R Markdown document is made interactive using Shiny. Unlike the more traditional workflow of creating static reports, you can now create documents that allow your readers to change the assumptions underlying your analysis and see the results immediately. 
+#read in data
+```{r}
+load("weekendmidnight.Rdata")
 
-To learn more, see [Interactive Documents](http://rmarkdown.rstudio.com/authoring_shiny.html).
-
-## Inputs and Outputs
-
-You can embed Shiny inputs and outputs in your document. Outputs are automatically updated whenever inputs change.  This demonstrates how a standard R plot can be made interactive by wrapping it in the Shiny `renderPlot` function. The `selectInput` and `sliderInput` functions create the input widgets used to drive the plot.
-
-```{r eruptions, echo=FALSE}
-inputPanel(
-  selectInput("n_breaks", label = "Number of bins:",
-              choices = c(10, 20, 35, 50), selected = 20),
-  
-  sliderInput("bw_adjust", label = "Bandwidth adjustment:",
-              min = 0.2, max = 2, value = 1, step = 0.2)
-)
-
-renderPlot({
-  hist(faithful$eruptions, probability = TRUE, breaks = as.numeric(input$n_breaks),
-       xlab = "Duration (minutes)", main = "Geyser eruption duration")
-  
-  dens <- density(faithful$eruptions, adjust = input$bw_adjust)
-  lines(dens, col = "blue")
-})
 ```
-
-## Embedded Application
-
-It's also possible to embed an entire Shiny application within an R Markdown document using the `shinyAppDir` function. This example embeds a Shiny application located in another directory:
-
-```{r tabsets, echo=FALSE}
-shinyAppDir(
-  system.file("examples/06_tabsets", package = "shiny"),
-  options = list(
-    width = "100%", height = 550
-  )
-)
-```
-
-Note the use of the `height` parameter to determine how much vertical space the embedded application should occupy.
-
-You can also use the `shinyApp` function to define an application inline rather then in an external directory.
-
-In all of R code chunks above the `echo = FALSE` attribute is used. This is to prevent the R code within the chunk from rendering in the document alongside the Shiny components.
 
 
 #Where are they?
 ```{r}
-tweetmap <- function(Saturday,tweets.df,starttime,endtime){
+tweetmap <- function(Day,tweets.df,starttime,endtime){
   #standard input time: starttime="05:00:00"
   starttime <- times(starttime)
   endtime <- times(endtime)
@@ -79,33 +41,36 @@ tweetmap <- function(Saturday,tweets.df,starttime,endtime){
   points <- data.frame(x=as.numeric(tmp$place_lon),
                        y=as.numeric(tmp$place_lat))
   points <- points[points$y<50,]
+  points <- points[points$x< -60,]
   points$tag <- points$x< -100 & points$y<30
   points <- points[points$tag==FALSE,]
   p <- ggplot(map.data) + geom_polygon(aes(long,lat,group=group),color="darkgrey",fill="black") + 
-  geom_point(data = points,aes(x,y),size=1,alpha=.1,color="yellow") + coord_map( "polyconic" ) + 
-  expand_limits( x = map.data$long, y = map.data$lat ) +
-  theme(axis.line=element_blank(),
-        axis.text=element_blank(),
-        axis.ticks=element_blank(), 
-        axis.title=element_blank(),
-        plot.title = element_text(size=20,angle=0),
-        panel.background=element_blank(),
-        panel.border=element_blank(), 
-        panel.grid.major=element_blank(),
-        plot.background=element_blank(), 
-        plot.margin=unit(0*c(-1.5,-1.5,-1.5,-1.5),"lines")) + 
-  ggtitle(paste(Saturday,"Tweets between",starttime+times("00:10:00"),"and",endtime+times("00:10:00"),sep = " "))
+    geom_point(data = points,aes(x,y),size=1,alpha=.1,color="yellow") + coord_map( "polyconic" ) + 
+    expand_limits( x = map.data$long, y = map.data$lat ) +
+    theme(axis.line=element_blank(),
+          axis.text=element_blank(),
+          axis.ticks=element_blank(), 
+          axis.title=element_blank(),
+          plot.title = element_text(size=20,angle=0),
+          panel.background=element_blank(),
+          panel.border=element_blank(), 
+          panel.grid.major=element_blank(),
+          plot.background=element_blank(), 
+          plot.margin=unit(0*c(-1.5,-1.5,-1.5,-1.5),"lines")) + 
+    ggtitle(paste(Day,"Tweets between",starttime,"and",endtime,sep = " "))
   return(p)
 }
+save(tweetmap,file = "function.Rdata")
 
-tweetmap("Saturday",tweets.df = tweets,starttime = "00:50:00",endtime = "01:50:00")
-tweetmap("Saturday",tweets.df = tweets,starttime = "01:50:00",endtime = "02:50:00")
+
+tweetmap("Saturday",tweets.df = Saturdaytweets,starttime = "00:50:00",endtime = "01:50:00")
+tweetmap("Saturday",tweets.df = Sundaytweets,starttime = "01:50:00",endtime = "02:50:00")
 tweetmap("Saturday",tweets.df = tweets,starttime = "02:50:00",endtime = "03:50:00")
 
-locationtxt <- tweets$location
+locationtxt <- Saturdaytweets$location
 locationtxt <- tolower(unlist(strsplit(locationtxt, " ")))
-lsample <- sample(locationtxt,10000,replace = FALSE)
-wordcloud(lsample, min.freq=3,colors = brewer.pal(7, "Pastel1"))
+lsample <- sample(locationtxt,5000,replace = FALSE)
+wordcloud(lsample, min.freq=3,random.color = TRUE,max.words = 15)
 ```
 
 #who are they?
@@ -125,7 +90,22 @@ wsample <- sample(words,10000,replace = FALSE)
 #clean_words<-words[-grep("http|@|#|ü|ä|ö", words)] 
 wordcloud(wsample, min.freq=3,colors = brewer.pal(7, "Pastel1"))
 
-```
+tmpword <- sample_n(Saturdaytweets,1000)$text
+tmpword<-tolower(unlist(strsplit(tmpword, " ")))
+myCorpus = Corpus(VectorSource(tmpword))
+myCorpus = tm_map(myCorpus, removePunctuation)
+myCorpus = tm_map(myCorpus, removeNumbers)
+myCorpus = tm_map(myCorpus, removeWords,c(stopwords("SMART"), "thy", "thou", "thee", "the", "and","usa", "but"))
+myDTM = TermDocumentMatrix(myCorpus,
+              control = list(minWordLength = 1))
+m = as.matrix(myDTM)
+m <- sort(rowSums(m), decreasing = TRUE)
+m <- data.frame(word = names(m),freq = m)
+figPath = system.file("examples/t.png",package = "wordcloud2")
 
+letterCloud(m, word = "TWITTER", size = 0.5,color = "skyblue",hoverFunction = htmlwidgets::JS("function hover() {}"))
+
+wordcloud2(m, figPath = figPath, size = 0.5,color = "skyblue",hoverFunction = htmlwidgets::JS("function hover() {}"),)
+```
 
 

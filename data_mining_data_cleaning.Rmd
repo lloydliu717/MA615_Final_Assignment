@@ -72,10 +72,9 @@ Sundaytweets <- readRDS("tweetsSun.RDS")
 Saturdaytweets <- cleantweets(Saturdaytweets)
 Sundaytweets <- cleantweets(Sundaytweets)
 
-saveRDS(Saturdaytweets,"sattweets.RDS")
-saveRDS(Sundaytweets,"suntweets.RDS")
+Saturdaytweets[,tag:=NULL]
+
+save(Saturdaytweets,Sundaytweets,file="weekendmidnight.Rdata")
 
 #compare time by tmp < times("5:00:00")
 ```
-
-

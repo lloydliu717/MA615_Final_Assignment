@@ -1,0 +1,363 @@
+---
+title: "MA615"
+output: 
+  flexdashboard::flex_dashboard:
+    orientation: columns
+    logo: logo.png
+    vertical_layout: fill
+    theme: bootstrap
+runtime: shiny
+---
+
+
+```{r global, include=FALSE}
+library(flexdashboard)
+library(rmarkdown)
+library(shiny)
+library(chron)
+library(ggmap)
+library(ggplot2)
+library(dplyr)
+library(grid)
+library(data.table)
+library(tm)
+library(wordcloud)
+library(wordcloud2)
+library(memoise)
+library(chron)
+library(plyr)
+
+setwd("~/Desktop/MA615/Final_Assignment")
+
+load("weekendmidnight.Rdata")
+load("function.Rdata")
+
+pos.words = readLines("positive-words.txt")
+neg.words = readLines("negative-words.txt")
+
+
+Days <<- list("Saturday" = "Saturday",
+              "Sunday" = "Sunday")
+
+
+getTermMatrix <- memoise(function(Day,content) {
+  # Careful not to let just any name slip in here; a
+  # malicious user could manipulate this value.
+  if (Day==Days[[1]]) {
+    d <- Saturdaytweets
+  }
+  else {
+    d <- Sundaytweets
+  }
+  if (content =="place") {
+    text <- tolower(unlist(strsplit(d$location, " ")))
+  }
+  else if(content == "tweet"){
+    text <- tolower(unlist(strsplit(d$text, " ")))
+  }
+  text <- sample(text,10000,replace = FALSE)
+  myCorpus = Corpus(VectorSource(text))
+  myCorpus = tm_map(myCorpus, removePunctuation)
+  myCorpus = tm_map(myCorpus, removeNumbers)
+  myCorpus = tm_map(myCorpus, removeWords,
+         c(stopwords("SMART"), "thy", "thou", "thee", "the", "and","usa", "but"))
+
+  myDTM = TermDocumentMatrix(myCorpus,
+              control = list(minWordLength = 1))
+  
+  m = as.matrix(myDTM)
+  
+  sort(rowSums(m), decreasing = TRUE)
+})
+
+score.sentiment = function(tweets, pos.words, neg.words, .progress='none')
+{
+  scores = laply(tweets, function(tweet, pos.words, neg.words) {
+    tweet = tolower(tweet)
+    words = unlist(strsplit(tweet, " "))
+    pos.matches = match(words, pos.words)
+    neg.matches = match(words, neg.words)
+    
+    pos.matches = !is.na(pos.matches)
+    neg.matches = !is.na(neg.matches)
+    
+    score = sum(pos.matches) - sum(neg.matches)
+    
+    return(score)
+  }, pos.words, neg.words, .progress=.progress )
+  
+  scores.df = data.frame(score=scores, text=tweets)
+  return(scores.df)
+}
+```
+
+Introduction 
+===================================== 
+Column {data-width = 100}
+-----------------------------------------------------------------------
+
+```{r}
+br()
+a(href="https://github.com/lloydliu717/MA615_Final_Assignment","View source code on Github")
+hr()
+h5("Author: Zichun Liu (Lloyd)")
+p("MSSP Student")
+img(src="4.pic.jpg",width=100,height=100)
+hr()
+h5("Author: Jiaxin Sun (Christine)")
+p("Undergraduate")
+img(src="3.pic.jpg",width=100,height=100)
+```
+
+Column {data-width=350}
+-----------------------------------------------------------------------
+
+```{r}
+img(src="twitter.jpg",width=800,height=150)
+h4("In this shiny app we demostrate several findings of twitter data. Enjoy it!")
+br()
+h4("We want to know about twitter's behavior in midnight at weekend!")
+hr()
+img(src="bird.png",width=600,height=450)
+br()
+```
+
+
+
+
+
+ggplot Map {data-navmenu="WHERE"}
+=====================================     
+
+Inputs {.sidebar}
+-----------------------------------------------------------------------
+```{r}
+selectInput("choseday", "Choose a day:",
+                  choices = c("Saturday","Sunday"))
+hr()
+sliderInput("range1","Time Range:",min = as.numeric(times("00:50:00")),  max = as.numeric(times("03:50:00")), value = c(as.numeric(times("01:50:00")),as.numeric(times("02:50:00"))),format="$#,##0", locale="us")
+
+actionButton(inputId = "update",label = "Plot")
+
+
+```
+
+Column
+-----------------------------------------------------------------------
+### time table {data-height=100}
+```{r}
+
+renderTable({
+    data.frame(
+      Start = as.character(times(input$range1[1])), 
+      End = as.character(times(input$range1[2])),
+      class = class(times(input$range1[1])),
+      stringsAsFactors=FALSE)
+})
+```
+
+### ggplot map
+```{r}
+terms2 <- reactive({
+    # Change when the "update" button is pressed...
+    input$update
+    # ...but not for anything else
+    isolate({
+      withProgress({
+        setProgress(message = "Processing ggplot...")
+        if (input$choseday=="Saturday") {d <- Saturdaytweets
+        d}
+        else {d <- Sundaytweets
+        d}
+      })
+    })
+  })
+
+renderPlot({
+    v <- terms2()
+    tweetmap(input$choseday,tweets.df = v,starttime = as.character(times(input$range1[1])),endtime = as.character(times(input$range1[2])))
+})
+
+```
+
+
+ggMap {data-navmenu="WHERE"}
+=====================================     
+
+WordCloud {data-navmenu="WHERE"}
+===================================== 
+
+Column {.sidebar}
+-----------------------------------------------------------------------
+```{r}
+selectInput("Day1", "Choose a day:",
+                  choices = c("Saturday","Sunday"))
+
+sliderInput("freq","Minimum Frequency:",min = 1,  max = 50, value = 15)
+sliderInput("max","Maximum Number of Words:",min = 1,  max = 300,  value = 100)
+hr()
+actionButton("update2", "Change")
+```
+
+
+Column
+-----------------------------------------------------------------------
+
+### Word Cloud
+```{r}
+terms1 <- reactive({
+    # Change when the "update" button is pressed...
+    input$update2
+    # ...but not for anything else
+    isolate({
+      withProgress({
+        setProgress(message = "Processing corpus...")
+        getTermMatrix(input$Day1,"place")
+      })
+    })
+  })
+wordcloud_rep <- repeatable(wordcloud)
+
+output$wordwhere <- renderPlot({
+    v <- terms1()
+    wordcloud_rep(names(v), v, scale=c(4,0.5),
+                  min.freq = input$freq, max.words=input$max,
+                  colors=brewer.pal(8, "Dark2"))
+  })
+plotOutput("wordwhere")
+
+```
+
+Column {data-width=250}
+-----------------------------------------------------------------------
+
+### Word Table {data-width=100}
+```{r}
+selectedData1 <- reactive({
+  frequency <- terms1()
+  df <- as.data.table(data.frame(word=names(frequency), frequency=as.integer(frequency)))
+  df[1:100,]
+})
+
+renderTable({
+  selectedData1()
+})
+```
+
+
+
+
+
+WordCloud {data-navmenu="WHAT"}
+===================================== 
+
+Column {.sidebar}
+-----------------------------------------------------------------------
+```{r}
+selectInput("Day", "Choose a day:",
+                  choices = c("Saturday","Sunday"))
+actionButton("update1", "Change")
+hr()
+sliderInput("freq","Minimum Frequency:",min = 1,  max = 50, value = 15)
+sliderInput("max","Maximum Number of Words:",min = 1,  max = 300,  value = 100)
+```
+
+
+Column
+-----------------------------------------------------------------------
+
+### Word Cloud
+```{r}
+terms <- reactive({
+    # Change when the "update" button is pressed...
+    input$update1
+    # ...but not for anything else
+    isolate({
+      withProgress({
+        setProgress(message = "Processing corpus...")
+        getTermMatrix(input$Day,"tweet")
+      })
+    })
+  })
+wordcloud_rep <- repeatable(wordcloud)
+
+output$wordwhat <- renderPlot({
+    v <- terms()
+    wordcloud_rep(names(v), v, scale=c(4,0.5),
+                  min.freq = input$freq, max.words=input$max,
+                  colors=brewer.pal(8, "Dark2"))
+  })
+plotOutput("wordwhat")
+
+```
+
+Column {data-width=250}
+-----------------------------------------------------------------------
+
+### Word Table {data-width=100}
+```{r}
+selectedData <- reactive({
+  frequency <- terms()
+  df <- as.data.table(data.frame(word=names(frequency), frequency=as.integer(frequency)))
+  df[1:100,]
+})
+
+renderTable({
+  selectedData()
+})
+```
+
+
+Sentiment Analysis {data-navmenu="WHAT"}
+===================================== 
+
+Column {.sidebar}
+-----------------------------------------------------------------------
+
+```{r}
+selectInput("Day2", "Choose a day:",choices = c("Saturday","Sunday"))
+hr()
+sliderInput("range","Time Range:",min = as.numeric(times("00:50:00")),  max = as.numeric(times("03:50:00")), value = c(as.numeric(times("01:50:00")),as.numeric(times("02:50:00"))),format="$#,##0", locale="us")
+selectInput("n_breaks", label = "Number of bins:",
+            choices = c(3,10, 20, 35, 50), selected = 20)
+```
+
+Column 
+-----------------------------------------------------------------------
+
+```{r}
+sliderValues <- reactive({
+    data.frame(
+      Start = as.character(times(input$range[1])), 
+      End = as.character(times(input$range[2])),
+      class = class(times(input$range[1])),
+      stringsAsFactors=FALSE)
+  }) 
+  renderTable({
+    sliderValues()
+})
+
+scores <- reactive({
+  if (input$Day2=="Saturday") {d <- Saturdaytweets}
+  else {d <- Sundaytweets}
+  d[,intime:=(EAST_Time>=times(input$range[1]) & EAST_Time<=times(input$range[2]))]
+  d <- d[intime==TRUE]
+  score <- score.sentiment(d$text,pos.words, neg.words)$score
+  score
+})
+  
+  
+renderPlot({
+  s <- scores()
+  hist(s, xlab="sentiment score",probability = TRUE, main=paste("Sentiment of ",input$Day2,"tweets",sep = " "),breaks = as.numeric(input$n_breaks))
+})  
+
+
+```
+
+
+
+WordCloud {data-navmenu="WHO"}
+=====================================    
+
+
