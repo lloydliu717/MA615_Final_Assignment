@@ -26,6 +26,7 @@ library(wordcloud2)
 library(memoise)
 library(chron)
 library(plyr)
+library(plotly)
 
 setwd("~/Desktop/MA615/Final_Assignment")
 
@@ -93,7 +94,7 @@ score.sentiment = function(tweets, pos.words, neg.words, .progress='none')
 
 Introduction 
 ===================================== 
-Column {data-width = 100}
+Column {.sidebar}
 -----------------------------------------------------------------------
 
 ```{r}
@@ -126,7 +127,7 @@ br()
 
 
 
-ggplot Map {data-navmenu="WHERE"}
+ggplot Map {data-navmenu="MAP"}
 =====================================     
 
 Inputs {.sidebar}
@@ -181,10 +182,31 @@ renderPlot({
 ```
 
 
-ggMap {data-navmenu="WHERE"}
-=====================================     
+Language distribution by Plotly {data-navmenu="MAP"}
+=====================================    
 
-WordCloud {data-navmenu="WHERE"}
+Inputs {.sidebar}
+-------------------------------------------------------------
+```{r}
+selectInput("Dayplotly", "Choose a day:", choices = c("Saturday","Sunday"))
+
+checkboxGroupInput(inputId = "Language",label ="Choose languages:",choices = c("en","es", "tl", "in", "ht", "fr","ar", "pt", "ja") , selected = "es")
+
+```
+
+Column
+-----------------------------------------------------------------------
+
+### language distribution
+```{r}
+renderPlotly({
+  lanplot(input$Dayplotly,input$Language)
+})
+```
+
+
+
+Location Cloud {data-navmenu="WORDCLOUD"}
 ===================================== 
 
 Column {.sidebar}
@@ -248,7 +270,7 @@ renderTable({
 
 
 
-WordCloud {data-navmenu="WHAT"}
+Tweets Cloud {data-navmenu="WORDCLOUD"}
 ===================================== 
 
 Column {.sidebar}
@@ -256,10 +278,11 @@ Column {.sidebar}
 ```{r}
 selectInput("Day", "Choose a day:",
                   choices = c("Saturday","Sunday"))
-actionButton("update1", "Change")
-hr()
 sliderInput("freq","Minimum Frequency:",min = 1,  max = 50, value = 15)
 sliderInput("max","Maximum Number of Words:",min = 1,  max = 300,  value = 100)
+hr()
+actionButton("update1", "Change")
+
 ```
 
 
@@ -308,7 +331,7 @@ renderTable({
 ```
 
 
-Sentiment Analysis {data-navmenu="WHAT"}
+Sentiment Score {data-navmenu="SENTIMENT"}
 ===================================== 
 
 Column {.sidebar}
@@ -354,10 +377,5 @@ renderPlot({
 
 
 ```
-
-
-
-WordCloud {data-navmenu="WHO"}
-=====================================    
 
 

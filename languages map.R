@@ -1,7 +1,7 @@
 library(plotly)
 
 #get rid of english and undefined language
-Saturdaytweets.new<-subset(Saturdaytweets, !lang %in% c("en", "und"))
+Saturdaytweets.new<-subset(Saturdaytweets, !lang %in% c("und"))
 
 #languages with most users
 a<-Saturdaytweets.new %>% 
@@ -11,7 +11,7 @@ a[order(-a$no_rows),]
 
 #pick eight languages with most users
 selected<-c("es", "tl", "in", "ht", "fr","ar", "pt", "ja")
-
+selected<-c("es")
 Saturdaytweets.new<-Saturdaytweets.new[match(as.character(Saturdaytweets.new$lang), selected), ]
 Saturdaytweets.new<-subset(Saturdaytweets, lang %in% selected)
 
@@ -31,5 +31,6 @@ g <- list(
 p <- plot_geo(Saturdaytweets.new, lat = ~place_lat, lon = ~place_lon) %>%
   add_markers( text = ~paste(lang),
                color = ~lang, symbol = I("circle"), hoverinfo = "text") %>%
-  layout( title = 'lang', geo = g)
+  layout(geo = g)
 p
+
