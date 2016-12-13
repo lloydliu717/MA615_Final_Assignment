@@ -74,7 +74,10 @@ Sundaytweets <- cleantweets(Sundaytweets)
 
 Saturdaytweets[,tag:=NULL]
 
-save(Saturdaytweets,Sundaytweets,file="weekendmidnight.Rdata")
+Days <<- list("Saturday" = "Saturday",
+              "Sunday" = "Sunday")
+
+save(Saturdaytweets,Sundaytweets,Days,file="weekendmidnight.Rdata")
 
 #compare time by tmp < times("5:00:00")
 ```

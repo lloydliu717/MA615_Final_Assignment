@@ -19,6 +19,8 @@ library(stringr)
 library(twitteR)
 library(tm)
 library(plyr)
+library(dplyr)
+library(stringr)
 ```
 
 #read in data
@@ -122,6 +124,10 @@ lanplot <- function(day,langu){
   
   #pick eight languages with most users
   #selected<-c("es", "tl", "in", "ht", "fr","ar", "pt", "ja")
+  if (langu=="") {
+    return("Please select language!")
+  }
+  else {
   selected<-langu
   Saturdaytweets.new<-Saturdaytweets.new[match(as.character(Saturdaytweets.new$lang), selected), ]
   Saturdaytweets.new<-subset(Saturdaytweets, lang %in% selected)
@@ -142,13 +148,97 @@ lanplot <- function(day,langu){
                  color = ~lang, symbol = I("circle"), hoverinfo = "text") %>%
     layout(geo = g)
   return(p)
+  }
 }
 
-lanplot("Saturday","es")
+lanplot("Saturday","")
+```
+
+#count the word frequency
+```{r}
+tmp <- sample_n(Saturdaytweets,10)
+count <- tmp$text[1]
+count<- length(unlist(strsplit(count, " ")))
+a <- sapply(tmp$text, function(text){length(unlist(strsplit(text, " ")))})
+hist(a)
+```
+
+# word cloud
+```{r}
+getTermMatrix <- memoise(function(Day,content) {
+  # Careful not to let just any name slip in here; a
+  # malicious user could manipulate this value.
+  if (Day==Days[[1]]) {
+    d <- Saturdaytweets
+  }
+  else {
+    d <- Sundaytweets
+  }
+  if (content =="place") {
+    text <- tolower(unlist(strsplit(d$location, " ")))
+  }
+  else if(content == "tweet"){
+    text <- tolower(unlist(strsplit(d$text, " ")))
+  }
+  text <- sample(text,10000,replace = FALSE)
+  myCorpus = Corpus(VectorSource(text))
+  myCorpus = tm_map(myCorpus, removePunctuation)
+  myCorpus = tm_map(myCorpus, removeNumbers)
+  myCorpus = tm_map(myCorpus, removeWords,
+         c(stopwords("SMART"), "thy", "thou", "thee", "the", "and","usa", "but"))
+
+  myDTM = TermDocumentMatrix(myCorpus,
+              control = list(minWordLength = 1))
+  
+  m = as.matrix(myDTM)
+  
+  return(sort(rowSums(m), decreasing = TRUE))
+})
+
+Satplace <- getTermMatrix("Saturday","place")
+Sunplace <- getTermMatrix("Sunday","place")
+Sattweet <- getTermMatrix("Saturday","tweet")
+Suntweet <- getTermMatrix("Sunday","tweet")
+
+getmatrix <- function(Day,content){
+  if (Day==Days[[1]]) {
+    if (content=="place") {return(Satplace)}
+    else {return(Sattweet)}
+  }
+  else {
+    if (content=="place") {return(Sunplace)}
+    else {return(Suntweet)}
+  }
+}
+
+```
+
+#sentiment score
+```{r}
+score.sentiment = function(tweets, pos.words, neg.words, .progress='none')
+{
+  scores = laply(tweets, function(tweet, pos.words, neg.words) {
+    tweet = tolower(tweet)
+    words = unlist(strsplit(tweet, " "))
+    pos.matches = match(words, pos.words)
+    neg.matches = match(words, neg.words)
+    
+    pos.matches = !is.na(pos.matches)
+    neg.matches = !is.na(neg.matches)
+    
+    score = sum(pos.matches) - sum(neg.matches)
+    
+    return(score)
+  }, pos.words, neg.words, .progress=.progress )
+  
+  scores.df = data.frame(score=scores, text=tweets)
+  return(scores.df)
+}
 ```
 
 
 ```{r}
-save(tweetmap,lanplot,file = "function.Rdata")
+save(Sattweet,Satplace,Suntweet,Sunplace,file = "wordcloud.Rdata")
+save(tweetmap,lanplot,getTermMatrix,score.sentiment,getmatrix,file = "function.Rdata")
 ```
 

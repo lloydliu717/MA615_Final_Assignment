@@ -27,69 +27,20 @@ library(memoise)
 library(chron)
 library(plyr)
 library(plotly)
+library(rsconnect)
 
-setwd("~/Desktop/MA615/Final_Assignment")
+#setwd("~/Desktop/MA615/Final_Assignment")
 
 load("weekendmidnight.Rdata")
+load("wordcloud.Rdata")
 load("function.Rdata")
 
 pos.words = readLines("positive-words.txt")
 neg.words = readLines("negative-words.txt")
 
 
-Days <<- list("Saturday" = "Saturday",
-              "Sunday" = "Sunday")
 
 
-getTermMatrix <- memoise(function(Day,content) {
-  # Careful not to let just any name slip in here; a
-  # malicious user could manipulate this value.
-  if (Day==Days[[1]]) {
-    d <- Saturdaytweets
-  }
-  else {
-    d <- Sundaytweets
-  }
-  if (content =="place") {
-    text <- tolower(unlist(strsplit(d$location, " ")))
-  }
-  else if(content == "tweet"){
-    text <- tolower(unlist(strsplit(d$text, " ")))
-  }
-  text <- sample(text,10000,replace = FALSE)
-  myCorpus = Corpus(VectorSource(text))
-  myCorpus = tm_map(myCorpus, removePunctuation)
-  myCorpus = tm_map(myCorpus, removeNumbers)
-  myCorpus = tm_map(myCorpus, removeWords,
-         c(stopwords("SMART"), "thy", "thou", "thee", "the", "and","usa", "but"))
-
-  myDTM = TermDocumentMatrix(myCorpus,
-              control = list(minWordLength = 1))
-  
-  m = as.matrix(myDTM)
-  
-  sort(rowSums(m), decreasing = TRUE)
-})
-
-score.sentiment = function(tweets, pos.words, neg.words, .progress='none')
-{
-  scores = laply(tweets, function(tweet, pos.words, neg.words) {
-    tweet = tolower(tweet)
-    words = unlist(strsplit(tweet, " "))
-    pos.matches = match(words, pos.words)
-    neg.matches = match(words, neg.words)
-    
-    pos.matches = !is.na(pos.matches)
-    neg.matches = !is.na(neg.matches)
-    
-    score = sum(pos.matches) - sum(neg.matches)
-    
-    return(score)
-  }, pos.words, neg.words, .progress=.progress )
-  
-  scores.df = data.frame(score=scores, text=tweets)
-  return(scores.df)
-}
 ```
 
 Introduction 
@@ -104,11 +55,11 @@ a(href="https://github.com/lloydliu717/MA615_Final_Assignment","View source code
 hr()
 h5("Author: Zichun Liu (Lloyd)")
 p("MSSP Student")
-img(src="4.pic.jpg",width=100,height=100)
+img(src="head.png",width=100,height=100)
 hr()
 h5("Author: Jiaxin Sun (Christine)")
 p("Undergraduate")
-img(src="3.pic.jpg",width=100,height=100)
+img(src="head2.png",width=100,height=100)
 ```
 
 Column {data-width=350}
@@ -120,7 +71,7 @@ h4("In this shiny app we demostrate several findings of twitter data. Enjoy it!"
 br()
 h4("We want to know about twitter's behavior in midnight at weekend!")
 hr()
-img(src="bird.png",width=600,height=450)
+img(src="bird.png", width=600, height=450)
 br()
 hr()
 h4("Brief Project Introduction:") 
@@ -254,7 +205,7 @@ selectInput("Day1", "Choose a day:",
 sliderInput("freq","Minimum Frequency:",min = 1,  max = 50, value = 15)
 sliderInput("max","Maximum Number of Words:",min = 1,  max = 300,  value = 100)
 hr()
-actionButton("update2", "Change")
+#actionButton("update2", "Change")
 ```
 
 
@@ -270,7 +221,7 @@ terms1 <- reactive({
     isolate({
       withProgress({
         setProgress(message = "Processing corpus...")
-        getTermMatrix(input$Day1,"place")
+        getmatrix(input$Day1,"place")
       })
     })
   })
@@ -314,10 +265,10 @@ Column {.sidebar}
 ```{r}
 selectInput("Day", "Choose a day:",
                   choices = c("Saturday","Sunday"))
-sliderInput("freq","Minimum Frequency:",min = 1,  max = 50, value = 15)
-sliderInput("max","Maximum Number of Words:",min = 1,  max = 300,  value = 100)
+sliderInput("freq1","Minimum Frequency:",min = 1,  max = 40, value = 15)
+sliderInput("max1","Maximum Number of Words:",min = 1,  max = 300,  value = 100)
 hr()
-actionButton("update1", "Change")
+#actionButton("update1", "Change")
 
 ```
 
@@ -334,7 +285,7 @@ terms <- reactive({
     isolate({
       withProgress({
         setProgress(message = "Processing corpus...")
-        getTermMatrix(input$Day,"tweet")
+        getmatrix(input$Day,"tweet")
       })
     })
   })
@@ -343,7 +294,7 @@ wordcloud_rep <- repeatable(wordcloud)
 output$wordwhat <- renderPlot({
     v <- terms()
     wordcloud_rep(names(v), v, scale=c(4,0.5),
-                  min.freq = input$freq, max.words=input$max,
+                  min.freq = input$freq1, max.words=input$max1,
                   colors=brewer.pal(8, "Dark2"))
   })
 plotOutput("wordwhat")
@@ -367,7 +318,7 @@ renderTable({
 ```
 
 
-Sentiment Score {data-navmenu="SENTIMENT"}
+Sentiment Score {data-navmenu="WORD ANALYSIS"}
 ===================================== 
 
 Column {.sidebar}
@@ -414,8 +365,35 @@ renderPlot({
 
 ```
 
-To be continued {data-navmenu="SENTIMENT"}
+Word frequency {data-navmenu="WORD ANALYSIS"}
 ===================================== 
+
+Column {.sidebar}
+----------------------------------------------
+```{r}
+br()
+sliderInput("binsnum","Bins Number",min = 5,  max = 50, value = 15)
+```
+
+Column
+----------------------------------------------
+```{r}
+h5("Word frequency comparasion in Saturday and Sunday",align="center")
+
+a <- sapply(Saturdaytweets$text, function(text){length(unlist(strsplit(text, " ")))})
+  a <- data.frame(n = a,tag="Saturday")
+  b <- sapply(Sundaytweets$text, function(text){length(unlist(strsplit(text, " ")))})
+  b <- data.frame(n = b,tag="Sunday")
+  a <- rbind(a,b)
+renderPlot({
+    ggplot(a) + geom_histogram(aes(n,fill=tag),position = "dodge",bins = as.numeric(input$binsnum))
+})
+```
+
 
 To be continued {data-navmenu="TO BE CONTINUED"}
 ===================================== 
+
+```{r}
+h4("To be continued....")
+```
